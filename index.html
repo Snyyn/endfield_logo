@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>明日方舟：终末地风格LOGO生成器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="loading-cover init" id="loading-cover">
+    <div class="progress-container">
+      <div class="progress-track">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+    <div class="progress-info">
+      <div class="progress-percent">0%</div>
+      <div class="status-line">
+        <span class="status-dot"></span>
+        <span class="status-text">INITIALIZING</span>
+      </div>
+    </div>
+    <div class="sweep-overlay"></div>
+  </div>
+
+  <div class="hud hud-tl"></div>
+  <div class="hud hud-br"></div>
+  <div class="container">
+    <div class="titlebar">
+      <div class="titlebar-grid"></div>
+      <div class="titlebar-marquee">
+        <span>ENDFIELD_LOGO ENDFIELD_LOGO ENDFIELD_LOGO ENDFIELD_LOGO ENDFIELD_LOGO ENDFIELD_LOGO</span>
+      </div>
+      <div class="spectrum-bar titlebar-spectrum"></div>
+    </div>
+
+      <div class="layout">
+      <div class="controls">
+        <div class="panel">
+          <div class="panel-title"><span class="panel-mark">CN</span>中文</div>
+          <div class="char-fields">
+          <label class="field">
+            <span class="tech-text">上左</span>
+            <input type="text" id="char1" maxlength="1" value="终">
+            <div class="labeled">
+              <span class="mini-label">字号</span>
+              <input type="number" class="char-size" id="size1" min="10" max="500" step="5" value="103" title="字号（占格子的百分比）">
+            </div>
+            <div class="pos-row">
+              <div class="labeled">
+                <span class="mini-label">横坐标偏移</span>
+                <input type="number" id="x1" min="-500" max="500" step="1" value="-15" title="横坐标偏移（像素）">
+              </div>
+              <div class="labeled">
+                <span class="mini-label">纵坐标偏移</span>
+                <input type="number" id="y1" min="-500" max="500" step="1" value="-1" title="纵坐标偏移（像素）">
+              </div>
+            </div>
+          </label>
+          <label class="field">
+            <span class="tech-text">上右</span>
+            <input type="text" id="char2" maxlength="1" value="末">
+            <div class="labeled">
+              <span class="mini-label">字号</span>
+              <input type="number" class="char-size" id="size2" min="10" max="500" step="5" value="103" title="字号（占格子的百分比）">
+            </div>
+            <div class="pos-row">
+              <div class="labeled">
+                <span class="mini-label">横坐标偏移</span>
+                <input type="number" id="x2" min="-500" max="500" step="1" value="-19" title="横坐标偏移（像素）">
+              </div>
+              <div class="labeled">
+                <span class="mini-label">纵坐标偏移</span>
+                <input type="number" id="y2" min="-500" max="500" step="1" value="3" title="纵坐标偏移（像素）">
+              </div>
+            </div>
+          </label>
+          <label class="field">
+            <span class="tech-text">下左</span>
+            <input type="text" id="char3" maxlength="1" value="地">
+            <div class="labeled">
+              <span class="mini-label">字号</span>
+              <input type="number" class="char-size" id="size3" min="10" max="500" step="5" value="103" title="字号（占格子的百分比）">
+            </div>
+            <div class="pos-row">
+              <div class="labeled">
+                <span class="mini-label">横坐标偏移</span>
+                <input type="number" id="x3" min="-500" max="500" step="1" value="-16" title="横坐标偏移（像素）">
+              </div>
+              <div class="labeled">
+                <span class="mini-label">纵坐标偏移</span>
+                <input type="number" id="y3" min="-500" max="500" step="1" value="-4" title="纵坐标偏移（像素）">
+              </div>
+            </div>
+          </label>
+      <div class="scan-line"></div>
+      <div class="field">
+        <span class="tech-text">中文整体调整</span>
+        <div class="cn-global-row">
+          <div class="labeled">
+            <span class="mini-label">总字号</span>
+            <input type="number" id="cnGlobalSize" min="10" max="500" step="5" value="100" title="汉字总字号（占格子百分比）">
+          </div>
+          <div class="labeled">
+            <span class="mini-label">总横坐标偏移</span>
+            <input type="number" id="cnGlobalX" min="-500" max="500" step="1" value="0" title="整体横坐标偏移（像素）">
+          </div>
+          <div class="labeled">
+            <span class="mini-label">总纵坐标偏移</span>
+            <input type="number" id="cnGlobalY" min="-500" max="500" step="1" value="0" title="整体纵坐标偏移（像素）">
+          </div>
+          </div>
+        </div>
+        </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="panel-mark">EN</span>英文</div>
+          <div class="row2">
+          <div class="field">
+            <span class="tech-text">英文行</span>
+            <div id="enLineList"></div>
+            <button id="addEnBtn" type="button" class="add-btn">+ 新建英文</button>
+          </div>
+          <div class="scan-line"></div>
+          <div class="field">
+            <span class="tech-text">英文整体调整</span>
+            <div class="en-global-row">
+              <div class="labeled">
+                <span class="mini-label">总字号</span>
+                <input type="number" id="enGlobalSize" min="10" max="500" step="5" value="100" title="英文总字号（占方块百分比）">
+              </div>
+              <div class="labeled">
+                <span class="mini-label">总横坐标偏移</span>
+                <input type="number" id="enGlobalX" min="-500" max="500" step="1" value="0" title="整体横坐标偏移（像素）">
+              </div>
+              <div class="labeled">
+                <span class="mini-label">总纵坐标偏移</span>
+                <input type="number" id="enGlobalY" min="-500" max="500" step="1" value="0" title="整体纵坐标偏移（像素）">
+              </div>
+              <div class="labeled">
+                <span class="mini-label">行间距</span>
+                <input type="number" id="enLineSpacing" min="0.1" max="3" step="0.05" value="0.85" title="英文行间距（倍数字号）">
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="panel-title">
+          <span class="panel-mark">OUT</span>输出
+          <span class="live-status"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="preview-wrap">
+          <canvas id="preview"></canvas>
+        </div>
+        <div class="below-preview">
+          <div class="field">
+            <span class="tech-text">背景样式</span>
+            <div class="mode-row">
+              <input type="radio" name="bgMode" value="black" id="modeBlack" checked>
+              <label for="modeBlack">黑底白字</label>
+              <input type="radio" name="bgMode" value="white" id="modeWhite">
+              <label for="modeWhite">白底黑字</label>
+              <input type="radio" name="bgMode" value="transparent" id="modeTransparent">
+              <label for="modeTransparent">透明背景</label>
+            </div>
+          </div>
+          <label class="field">
+            <span class="tech-text">图片像素</span>
+            <input type="number" id="sizeInput" min="64" max="4096" step="32" value="512">
+          </label>
+          <div class="actions">
+            <button id="downloadBtn" class="ef-btn"><span class="ef-btn-indicator"></span><span class="ef-btn-text">下载 PNG</span></button>
+            <button id="downloadAllBtn" class="ef-btn endspace-btn-3d"><span class="ef-btn-indicator"></span><span class="ef-btn-text">下载全部</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
