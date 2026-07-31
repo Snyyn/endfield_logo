@@ -153,7 +153,8 @@
   const MODES = {
     black: { bg: "#000000", fg: "#ffffff", label: "黑底白字" },
     white: { bg: "#ffffff", fg: "#000000", label: "白底黑字" },
-    transparent: { bg: null, fg: "#ffffff", label: "透明背景" },
+    transparent: { bg: null, fg: "#ffffff", label: "透明白字" },
+    transparent_black: { bg: null, fg: "#000000", label: "透明黑字" },
   };
 
   function wrapText(text, maxWidth, fontSize) {
@@ -217,7 +218,7 @@
       factor = Math.max((cell - pad - lastH) / restH, 0);
     }
     ctx.textAlign = "center";
-    const knockout = mode === "transparent";
+    const knockout = mode === "transparent" || mode === "transparent_black";
     if (knockout) {
       ctx.globalCompositeOperation = "destination-out";
       ctx.fillStyle = "#ffffff";
