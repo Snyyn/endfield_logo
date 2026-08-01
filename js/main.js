@@ -1,9 +1,11 @@
 (function () {
   /* === 常量 === */
   const FONT_NAME = "EndfieldFont";
-  const FONT_URL = "fonts/HYLingXinSquare95W.ttf";
+  const FONT_URL = "fonts/HYLingXinSquare95W.subset.woff2";
   const EN_FONT_NAME = "HarmonyOSBlack";
-  const EN_FONT_URL = "fonts/HarmonyOS_Sans_Black.ttf";
+  const EN_FONT_URL = "fonts/HarmonyOS_Sans_SC_Black.subset.woff2";
+  const SMALL_FONT_NAME = EN_FONT_NAME; // 与英文同字体，共用一份 @font-face
+  const SMALL_FONT_URL = EN_FONT_URL;
 
   /* === DOM 引用 === */
   const char1 = document.getElementById("char1");
@@ -27,12 +29,21 @@
   const enGlobalX = document.getElementById("enGlobalX");
   const enGlobalY = document.getElementById("enGlobalY");
   const enLineSpacing = document.getElementById("enLineSpacing");
+  const enAutoAlign = document.getElementById("enAutoAlign");
   const sizeInput = document.getElementById("sizeInput");
+  const sizeInputH = document.getElementById("sizeInputH");
   const downloadBtn = document.getElementById("downloadBtn");
   const downloadSvgBtn = document.getElementById("downloadSvgBtn");
   const modeInputs = document.querySelectorAll('input[name="bgMode"]');
   const canvas = document.getElementById("preview");
   const ctx = canvas.getContext("2d");
+  const canvasH = document.getElementById("previewH");
+  const ctxH = canvasH.getContext("2d");
+  const downloadHBtn = document.getElementById("downloadHBtn");
+  const downloadHSvgBtn = document.getElementById("downloadHSvgBtn");
+
+  // 当前绘制目标 context（drawTo 切换；所有绘制函数通过 currentCtx 访问）
+  let currentCtx = ctx;
 
   const customPanel = document.getElementById("customPanel");
   const customHint = document.getElementById("customHint");
@@ -55,14 +66,26 @@
   const textTransparentRadio = document.getElementById("textTransparent");
   const bgImageTransparentRadio = document.getElementById("bgImageTransparent");
 
+  // 小字板块
+  const smallPanel = document.getElementById("smallPanel");
+  const smallBody = document.getElementById("smallBody");
+  const smallEnabled = document.getElementById("smallEnabled");
+  const smallText = document.getElementById("smallText");
+  const smallSize = document.getElementById("smallSize");
+  const smallX = document.getElementById("smallX");
+  const smallY = document.getElementById("smallY");
+  const smallColor = document.getElementById("smallColor");
+  const smallColorAlpha = document.getElementById("smallColorAlpha");
+
   /* === 状态变量 === */
   let fontReady = false;
   let enFontReady = false;
-  let fontsReady = false; // 加载页用：字体是否全部就绪
-  let fontBase64 = ""; // 缓存字体 Base64，用于 SVG 嵌入
-  let enFontBase64 = "";
+  let smallFontReady = false;
+  let fontsReadyResolve = null;
+  const fontsReadyPromise = new Promise(function (r) { fontsReadyResolve = r; });
   let customImage = null; // 用户上传的自定义图片
   let lastNonCustomMode = "black"; // 上一个非自定义模式，用于切换到自定义时同步默认色
+  let currentMode = document.querySelector('input[name="bgMode"]:checked').value;
 
   /* === 模式定义 === */
   // bg: 背景色（null 表示透明），fg: 默认前景色，label: 显示名称
@@ -75,14 +98,16 @@
   };
 
   function getMode() {
-    return document.querySelector('input[name="bgMode"]:checked').value;
+    return currentMode;
   }
 
   /* === 工具函数 === */
 
   // hex + 透明度百分比 -> rgba 字符串（透明度 100% 时返回原 hex）
   function withAlpha(hex, alphaPercent) {
-    const a = Math.max(0, Math.min(100, Number(alphaPercent) || 100)) / 100;
+    // 注意：0 是合法透明度值，不能用 || 兜底（0 || 100 会变 100）
+    const num = Number(alphaPercent);
+    const a = Math.max(0, Math.min(100, isNaN(num) ? 100 : num)) / 100;
     if (a >= 1) return hex;
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -107,17 +132,16 @@
   }
 
   /* === 字体加载 === */
-  // FontFace 用 URL 字符串让浏览器原生下载（最可靠），fetch 只负责获取 Base64
-  // 两者共享 preload 缓存，不会重复下载
+  // FontFace 用 URL 字符串让浏览器原生下载（最可靠）
+  // Base64 转换改为惰性按需获取（仅 SVG 下载时），避免阻塞首屏
   async function loadFonts() {
     const cnFace = new FontFace(FONT_NAME, "url(" + FONT_URL + ")");
     const enFace = new FontFace(EN_FONT_NAME, "url(" + EN_FONT_URL + ")");
+    // SMALL 复用 EN 字体（同文件、同 family 名），无需单独 FontFace
 
-    const [cnLoad, enLoad, cnB64, enB64] = await Promise.allSettled([
+    const [cnLoad, enLoad] = await Promise.allSettled([
       cnFace.load(),
       enFace.load(),
-      fetch(FONT_URL).then(function (r) { return r.arrayBuffer(); }).then(arrayBufferToBase64),
-      fetch(EN_FONT_URL).then(function (r) { return r.arrayBuffer(); }).then(arrayBufferToBase64),
     ]);
 
     if (cnLoad.status === "fulfilled") {
@@ -130,20 +154,25 @@
     if (enLoad.status === "fulfilled") {
       document.fonts.add(enFace);
       enFontReady = true;
+      smallFontReady = true; // SMALL 复用 EN 字体
     } else {
       console.error("英文字体加载失败:", enLoad.reason);
     }
 
-    if (cnB64.status === "fulfilled") fontBase64 = cnB64.value;
-    else console.error("中文字体 Base64 生成失败:", cnB64.reason);
-
-    if (enB64.status === "fulfilled") enFontBase64 = enB64.value;
-    else console.error("英文字体 Base64 生成失败:", enB64.reason);
-
-    fontsReady = true;
-    renderPreview();
+    if (fontsReadyResolve) fontsReadyResolve();
     autoFitAll();
     renderPreview();
+  }
+
+  // SVG 导出用：惰性获取字体 Base64（只在下载 SVG 时按需 fetch，结果缓存复用）
+  const base64Cache = {};
+  function fetchFontBase64(url) {
+    if (!base64Cache[url]) {
+      base64Cache[url] = fetch(url)
+        .then(function (r) { return r.arrayBuffer(); })
+        .then(arrayBufferToBase64);
+    }
+    return base64Cache[url];
   }
 
   /* === 字形测量与绘制 === */
@@ -151,12 +180,12 @@
   // 计算字形度量（drawGlyph 和 glyphSvg 共用）
   // 返回 { font: 实际字号, drawX: 绘制 x 偏移, drawY: 绘制 y 偏移 }
   function calcGlyphMetrics(cellSize, char, scale) {
-    ctx.font = cellSize + "px " + FONT_NAME;
-    const m = ctx.measureText(char);
+    currentCtx.font = cellSize + "px " + FONT_NAME;
+    const m = currentCtx.measureText(char);
     const inkW = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) || cellSize;
     const s = cellSize * (cellSize / inkW) * scale;
-    ctx.font = s + "px " + FONT_NAME;
-    const sm = ctx.measureText(char);
+    currentCtx.font = s + "px " + FONT_NAME;
+    const sm = currentCtx.measureText(char);
     const sw = sm.actualBoundingBoxLeft + sm.actualBoundingBoxRight;
     const sh = sm.actualBoundingBoxAscent + sm.actualBoundingBoxDescent;
     return {
@@ -170,8 +199,8 @@
   function drawGlyph(x, y, cellSize, char, scale) {
     if (!char) return;
     const g = calcGlyphMetrics(cellSize, char, scale);
-    ctx.font = g.font + "px " + FONT_NAME;
-    ctx.fillText(char, x + g.drawX, y + g.drawY);
+    // calcGlyphMetrics 末尾已设置 currentCtx.font，此处无需重复
+    currentCtx.fillText(char, x + g.drawX, y + g.drawY);
   }
 
   // 生成 SVG <text> 元素（复刻 drawGlyph 的度量计算）
@@ -189,14 +218,14 @@
   // 完全复刻 drawGlyph 的字号计算与居中逻辑，确保扫描结果与实际绘制一致
   function makeScanPixels(ch, cellSize, pad) {
     if (!ch) return null;
-    ctx.font = cellSize + "px " + FONT_NAME;
-    const m = ctx.measureText(ch);
+    currentCtx.font = cellSize + "px " + FONT_NAME;
+    const m = currentCtx.measureText(ch);
     const inkW = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) || cellSize;
 
     return function scanPixels(scale) {
       const s = cellSize * (cellSize / inkW) * scale;
-      ctx.font = s + "px " + FONT_NAME;
-      const sm = ctx.measureText(ch);
+      currentCtx.font = s + "px " + FONT_NAME;
+      const sm = currentCtx.measureText(ch);
       const sw = sm.actualBoundingBoxLeft + sm.actualBoundingBoxRight;
       const sh = sm.actualBoundingBoxAscent + sm.actualBoundingBoxDescent;
       const drawX = (cellSize - sw) / 2 - sm.actualBoundingBoxLeft;
@@ -328,6 +357,8 @@
     const enColors = getEnLines().map(function () { return enColor; });
     // 英文挖空：仅透明模式且未启用自定义时
     const enKnockout = !enabled && (mode === "transparent" || mode === "transparent_black");
+    // 小字颜色：自定义时用自定义色，否则用前景色
+    const smallColorVal = enabled ? withAlpha(smallColor.value, smallColorAlpha.value) : m.fg;
     return {
       bg: bg,
       fg: m.fg,
@@ -335,6 +366,7 @@
       enColors: enColors,
       blockColor: blockColor,
       enKnockout: enKnockout,
+      smallColor: smallColorVal,
     };
   }
 
@@ -354,6 +386,16 @@
       customBody.style.pointerEvents = "none";
     }
     updateCustomImageState();
+  }
+
+  /* === 小字面板状态 === */
+
+  function isSmallEnabled() {
+    return smallEnabled.checked;
+  }
+
+  function updateSmallPanelState() {
+    smallPanel.classList.toggle("enabled", isSmallEnabled());
   }
 
   // 自定义图片：仅当 custom 模式 + 勾选启用 + 已上传图片时生效
@@ -399,25 +441,25 @@
   /* === 图片绘制 === */
 
   // 绘制图片铺满画布（cover 模式，保持比例）
-  function drawImageCover(img, size) {
-    const ratio = Math.max(size / img.width, size / img.height);
-    const w = img.width * ratio;
-    const h = img.height * ratio;
-    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  function drawImageCover(img, w, h) {
+    const ratio = Math.max(w / img.width, h / img.height);
+    const iw = img.width * ratio;
+    const ih = img.height * ratio;
+    currentCtx.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
   }
 
   /* === 英文换行与绘制 === */
 
   // 英文文本换行（drawEnglish 和 downloadSvg 共用）
   function wrapText(text, maxWidth, fontSize) {
-    ctx.font = fontSize + "px " + EN_FONT_NAME;
+    currentCtx.font = fontSize + "px " + EN_FONT_NAME;
     const lines = [];
     text.split("\n").forEach(function (para) {
       const words = para.split(/\s+/).filter(Boolean);
       let line = "";
       words.forEach(function (w) {
         const t = line ? line + " " + w : w;
-        if (!line || ctx.measureText(t).width <= maxWidth) {
+        if (!line || currentCtx.measureText(t).width <= maxWidth) {
           line = t;
         } else {
           lines.push(line);
@@ -430,8 +472,9 @@
   }
 
   // 计算英文文本块的位置和字号（drawEnglish 和 downloadSvg 共用）
+  // p 包含 cell, centerX, yBase, offScale（田字格和横排不同）
   // 返回 [{ text, x, y, font, color }] 数组
-  function calcEnglishBlocks(size, colors) {
+  function calcEnglishBlocks(p, colors) {
     const allLines = getEnLines();
     const lines = [];
     allLines.forEach(function (l, i) {
@@ -439,17 +482,18 @@
         lines.push({
           text: l.text, size: l.size, x: l.x, y: l.y,
           color: colors.enColors[i] != null ? colors.enColors[i] : "#000000",
+          srcIndex: i, // 保留原始索引，用于回写字号
         });
       }
     });
     if (!enFontReady || !lines.length) return [];
 
-    const cell = size / 2;
+    const cell = p.cell;
     const pad = cell * 0.06;
     const maxW = cell - pad * 2;
-    const centerX = cell + cell / 2;
+    const centerX = p.centerX;
     const last = lines.length - 1;
-    const offScale = size / 512;
+    const offScale = p.offScale;
     const lineSpacing = Number(enLineSpacing.value) || 0.85;
     const globalSize = (Number(enGlobalSize.value) || 100) / 100;
     const globalX = (Number(enGlobalX.value) || 0) * offScale;
@@ -460,16 +504,46 @@
       let fs = cell * 0.14 * (l.size / 100) * globalSize;
       let ls = wrapText(l.text, maxW, fs);
       while (fs > 4) {
-        ctx.font = fs + "px " + EN_FONT_NAME;
+        currentCtx.font = fs + "px " + EN_FONT_NAME;
         const widest = ls.reduce(function (mx, s) {
-          return Math.max(mx, ctx.measureText(s).width);
+          return Math.max(mx, currentCtx.measureText(s).width);
         }, 0);
         if (widest <= maxW) break;
         fs *= 0.92;
         ls = wrapText(l.text, maxW, fs);
       }
-      return { lines: ls, font: fs, x: l.x * offScale, y: l.y * offScale, color: l.color };
+      return { lines: ls, font: fs, x: l.x * offScale, y: l.y * offScale, color: l.color, srcSize: l.size, srcIndex: l.srcIndex };
     });
+
+    // 自动对齐：以占用宽度最长的行为基准，放大其他行字号使各行占用宽度一致
+    if (enAutoAlign.checked) {
+      // 计算每行最宽子行的宽度
+      blocks.forEach(function (b) {
+        currentCtx.font = b.font + "px " + EN_FONT_NAME;
+        b.widest = b.lines.reduce(function (mx, s) {
+          return Math.max(mx, currentCtx.measureText(s).width);
+        }, 0);
+      });
+      // 找出目标宽度（所有行中最宽的）
+      const targetW = blocks.reduce(function (mx, b) {
+        return Math.max(mx, b.widest);
+      }, 0);
+      // 放大其他行字号（目标宽度必然 <= maxW，因此放大后不会超限）
+      // 同时把放大后的等效 size 回写到对应行的字号输入框
+      const sizeInputs = enLineList.querySelectorAll(".en-line-size");
+      blocks.forEach(function (b) {
+        if (b.widest > 0 && b.widest < targetW) {
+          const ratio = targetW / b.widest;
+          b.font *= ratio;
+          // 回写等效字号（保留原始 size 的比例）
+          const newSize = Math.round(b.srcSize * ratio);
+          const input = sizeInputs[b.srcIndex];
+          if (input && Number(input.value) !== newSize) {
+            input.value = newSize;
+          }
+        }
+      });
+    }
 
     // 计算总高度，若超出格子则压缩非末行
     const totalRaw = blocks.reduce(function (s, b) {
@@ -484,7 +558,7 @@
 
     // 从下往上排列，收集所有文本的位置
     const texts = [];
-    let yBase = size - pad;
+    let yBase = p.yBase;
     for (let bi = blocks.length - 1; bi >= 0; bi--) {
       const b = blocks[bi];
       const f = bi === last ? 1 : factor;
@@ -504,38 +578,41 @@
   }
 
   // 在 Canvas 上绘制英文（支持普通填充和挖空两种模式）
-  function drawEnglish(size, colors) {
-    const texts = calcEnglishBlocks(size, colors);
+  function drawEnglish(p, colors) {
+    const texts = calcEnglishBlocks(p, colors);
     if (!texts.length) return;
 
     const knockout = colors.enKnockout;
 
-    ctx.textAlign = "center";
+    currentCtx.textAlign = "center";
+    currentCtx.textBaseline = "alphabetic"; // 重置（drawSmallText 改成了 top）
     if (knockout) {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "#ffffff";
+      currentCtx.globalCompositeOperation = "destination-out";
+      currentCtx.fillStyle = "#ffffff";
     }
 
     texts.forEach(function (t) {
       if (!knockout) {
-        ctx.fillStyle = t.color;
+        currentCtx.fillStyle = t.color;
       }
-      ctx.font = t.font + "px " + EN_FONT_NAME;
-      ctx.fillText(t.text, t.x, t.y);
+      currentCtx.font = t.font + "px " + EN_FONT_NAME;
+      currentCtx.fillText(t.text, t.x, t.y);
     });
 
-    ctx.textAlign = "left";
-    ctx.globalCompositeOperation = "source-over";
+    currentCtx.textAlign = "left";
+    currentCtx.globalCompositeOperation = "source-over";
   }
 
   /* === 绘制参数解析（draw 和 downloadSvg 共用） === */
 
-  function getDrawParams() {
-    const size = Math.min(Math.max(Math.round(Number(sizeInput.value) || 512), 64), 4096);
+  // layout: 'grid'（田字格，正方形画布）或 'row'（横排，2:1 画布）
+  // sizeOverride: 可选，横排用独立像素值
+  function getDrawParams(layout, sizeOverride) {
+    const rawSize = sizeOverride != null ? sizeOverride : Number(sizeInput.value);
+    const size = Math.min(Math.max(Math.round(rawSize || 512), 64), 4096);
     const cell = size / 2;
     const offScale = size / 512;
     const chars = [char1.value.slice(0, 1), char2.value.slice(0, 1), char3.value.slice(0, 1)];
-    const positions = [[0, 0], [cell, 0], [0, cell]];
     const scales = [
       (Number(size1.value) || 100) / 100,
       (Number(size2.value) || 100) / 100,
@@ -549,127 +626,195 @@
     ];
     const cnOffX = (Number(cnGlobalX.value) || 0) * offScale;
     const cnOffY = (Number(cnGlobalY.value) || 0) * offScale;
+
+    // 田字格：正方形画布 size×size，四格 2×2，矩形在右下
+    // 横排：画布宽度 2size，高度仅 1 个 cell（紧贴实际内容，不卡死 2:1）
+    let canvasW, canvasH, positions, blockX, blockY, centerX, yBase;
+    const pad = cell * 0.06;
+    if (layout === "row") {
+      canvasW = size * 2;
+      canvasH = cell; // 仅保留实际内容高度（1 个 cell），不卡死 2:1
+      const gy = 0; // 内容从顶部开始，无垂直留白
+      positions = [[0, gy], [cell, gy], [cell * 2, gy]];
+      blockX = cell * 3;
+      blockY = gy;
+      centerX = blockX + cell / 2;
+      yBase = gy + cell - pad;
+    } else {
+      canvasW = size;
+      canvasH = size;
+      positions = [[0, 0], [cell, 0], [0, cell]];
+      blockX = cell;
+      blockY = cell;
+      centerX = blockX + cell / 2;
+      yBase = size - pad;
+    }
+
+    // 小字开启时：画布顶部额外增加 smallH（不压缩格子内容）
+    // 布局：上边距 → 小字 → 间距 → 汉字顶部（紧贴左上字上方）
+    // 小字字号按 cell 比例计算，预览比例稳定（不随图片像素缩放）
+    const smallOn = isSmallEnabled() && smallFontReady && smallText.value.trim();
+    let smallH = 0;
+    let smallSizePx = 0;
+    let smallDrawX = 0;
+    let smallDrawY = 0;
+    if (smallOn) {
+      // smallSize 是相对 cell 的百分比（如 24 表示占 cell 的 24%）
+      smallSizePx = cell * (Number(smallSize.value) || 24) / 100;
+      const gap = smallSizePx * 0.03; // 小字底部到汉字顶部的间距
+      smallH = smallSizePx + gap; // 画布额外增加的高度
+      canvasH += smallH;
+      positions = positions.map(function (pos) { return [pos[0], pos[1] + smallH]; });
+      blockY += smallH;
+      yBase += smallH;
+      // 小字紧贴左上字上方：左对齐左上字 x，底部距汉字顶部 gap
+      // 汉字顶部在 positions[0][1]，小字顶部 = 汉字顶部 - gap - smallSizePx
+      smallDrawX = positions[0][0] + (Number(smallX.value) || 0) * offScale;
+      smallDrawY = positions[0][1] - gap - smallSizePx + (Number(smallY.value) || 0) * offScale;
+    }
+
     return {
-      size: size, cell: cell, offScale: offScale, chars: chars,
+      layout: layout, size: size, canvasW: canvasW, canvasH: canvasH,
+      cell: cell, offScale: offScale, chars: chars,
       positions: positions, scales: scales, cnGlobalScale: cnGlobalScale,
       offsets: offsets, cnOffX: cnOffX, cnOffY: cnOffY,
+      blockX: blockX, blockY: blockY, blockW: cell, blockH: cell,
+      centerX: centerX, yBase: yBase,
+      smallOn: smallOn, smallText: smallOn ? smallText.value : "",
+      smallSizePx: smallSizePx, smallDrawX: smallDrawX, smallDrawY: smallDrawY,
     };
   }
 
   // 绘制汉字（指定填充样式，draw 和 drawImage 模式共用）
+  // fontReady 由加载页门控，此处恒为 true；字体未就绪时 drawGlyph 内部用 fallback 字体度量，仍可正常绘制
   function drawChars(params, fillStyle) {
-    ctx.fillStyle = fillStyle;
-    if (fontReady) {
-      params.chars.forEach(function (ch, i) {
-        drawGlyph(
-          params.positions[i][0] + params.offsets[i][0] + params.cnOffX,
-          params.positions[i][1] + params.offsets[i][1] + params.cnOffY,
-          params.cell, ch, params.scales[i] * params.cnGlobalScale
-        );
-      });
-    } else {
-      // 字体未加载时的 fallback
-      ctx.font = params.cell * 0.8 + "px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      params.chars.forEach(function (ch, i) {
-        if (ch) ctx.fillText(ch, params.positions[i][0] + params.cell / 2, params.positions[i][1] + params.cell / 2);
-      });
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
-    }
+    currentCtx.fillStyle = fillStyle;
+    currentCtx.textBaseline = "alphabetic"; // 重置（drawSmallText 改成了 top）
+    params.chars.forEach(function (ch, i) {
+      drawGlyph(
+        params.positions[i][0] + params.offsets[i][0] + params.cnOffX,
+        params.positions[i][1] + params.offsets[i][1] + params.cnOffY,
+        params.cell, ch, params.scales[i] * params.cnGlobalScale
+      );
+    });
   }
 
   /* === 主绘制函数 === */
 
-  function draw(mode) {
-    const colors = resolveColors(mode);
-    const p = getDrawParams();
-    canvas.width = p.size;
-    canvas.height = p.size;
+  // 绘制小字（左上字上方，左对齐）
+  function drawSmallText(p, fillStyle) {
+    if (!p.smallOn) return;
+    currentCtx.font = p.smallSizePx + "px " + SMALL_FONT_NAME;
+    currentCtx.fillStyle = fillStyle;
+    currentCtx.textAlign = "left";
+    currentCtx.textBaseline = "top";
+    currentCtx.fillText(p.smallText, p.smallDrawX, p.smallDrawY);
+  }
+
+  // 核心绘制：在 targetCtx 对应的 canvas 上按 params 绘制
+  function drawTo(targetCtx, p, colors) {
+    currentCtx = targetCtx;
+    const targetCanvas = targetCtx.canvas;
+    targetCanvas.width = p.canvasW;
+    targetCanvas.height = p.canvasH;
 
     /* --- 自定义图片模式 --- */
     if (isCustomImageEnabled()) {
       const imgMode = getImageMode();
       if (imgMode === "textTransparent") {
-        // 文字透明：图片铺满作为材质，文字位置挖空
-        drawImageCover(customImage, p.size);
-        ctx.globalCompositeOperation = "destination-out";
+        // 文字透明：图片铺满作为材质，文字位置（含小字）挖空
+        drawImageCover(customImage, p.canvasW, p.canvasH);
+        currentCtx.globalCompositeOperation = "destination-out";
         drawChars(p, "#ffffff");
-        ctx.globalCompositeOperation = "source-over";
+        drawSmallText(p, "#ffffff");
+        currentCtx.globalCompositeOperation = "source-over";
         colors.enKnockout = true;
-        drawEnglish(p.size, colors);
+        drawEnglish(p, colors);
       } else {
-        // 背景透明：背景透明，文字/矩形用图片材质填充，英文挖空透明
-        ctx.clearRect(0, 0, p.size, p.size);
+        // 背景透明：背景透明，文字/矩形/小字用图片材质填充，英文挖空透明
+        currentCtx.clearRect(0, 0, p.canvasW, p.canvasH);
         // 创建 cover pattern
         const tmpCanvas = document.createElement("canvas");
-        tmpCanvas.width = p.size;
-        tmpCanvas.height = p.size;
+        tmpCanvas.width = p.canvasW;
+        tmpCanvas.height = p.canvasH;
         const tmpCtx = tmpCanvas.getContext("2d");
-        const ratio = Math.max(p.size / customImage.width, p.size / customImage.height);
+        const ratio = Math.max(p.canvasW / customImage.width, p.canvasH / customImage.height);
         const iw = customImage.width * ratio;
         const ih = customImage.height * ratio;
-        tmpCtx.drawImage(customImage, (p.size - iw) / 2, (p.size - ih) / 2, iw, ih);
-        const pattern = ctx.createPattern(tmpCanvas, "no-repeat");
+        tmpCtx.drawImage(customImage, (p.canvasW - iw) / 2, (p.canvasH - ih) / 2, iw, ih);
+        const pattern = currentCtx.createPattern(tmpCanvas, "no-repeat");
         // 1. 画汉字 pattern
         drawChars(p, pattern);
-        // 2. 画矩形 pattern
-        ctx.fillStyle = pattern;
-        ctx.fillRect(p.cell, p.cell, p.cell, p.cell);
-        // 3. 挖空英文位置（最后挖，不影响矩形和汉字）
+        // 2. 画小字 pattern
+        drawSmallText(p, pattern);
+        // 3. 画矩形 pattern
+        currentCtx.fillStyle = pattern;
+        currentCtx.fillRect(p.blockX, p.blockY, p.blockW, p.blockH);
+        // 4. 挖空英文位置（最后挖，不影响矩形和汉字）
         colors.enKnockout = true;
-        drawEnglish(p.size, colors);
+        drawEnglish(p, colors);
       }
       return;
     }
 
     /* --- 普通模式 --- */
     // 背景：先清空，再画带透明度的背景色
-    ctx.clearRect(0, 0, p.size, p.size);
+    currentCtx.clearRect(0, 0, p.canvasW, p.canvasH);
     if (colors.bg) {
-      ctx.fillStyle = colors.bg;
-      ctx.fillRect(0, 0, p.size, p.size);
+      currentCtx.fillStyle = colors.bg;
+      currentCtx.fillRect(0, 0, p.canvasW, p.canvasH);
     }
 
-    // 逐字绘制（各自颜色）
-    if (fontReady) {
-      p.chars.forEach(function (ch, i) {
-        ctx.fillStyle = colors.charColors[i];
-        drawGlyph(
-          p.positions[i][0] + p.offsets[i][0] + p.cnOffX,
-          p.positions[i][1] + p.offsets[i][1] + p.cnOffY,
-          p.cell, ch, p.scales[i] * p.cnGlobalScale
-        );
-      });
-    } else {
-      drawChars(p, colors.charColors[0]);
-    }
+    // 小字（汉字之前绘制，避免被覆盖）
+    drawSmallText(p, colors.smallColor);
+
+    // 逐字绘制（各自颜色）；fontReady 由加载页门控恒为 true
+    p.chars.forEach(function (ch, i) {
+      currentCtx.fillStyle = colors.charColors[i];
+      drawGlyph(
+        p.positions[i][0] + p.offsets[i][0] + p.cnOffX,
+        p.positions[i][1] + p.offsets[i][1] + p.cnOffY,
+        p.cell, ch, p.scales[i] * p.cnGlobalScale
+      );
+    });
 
     // 右下角方块
-    ctx.fillStyle = colors.blockColor;
-    ctx.fillRect(p.cell, p.cell, p.cell, p.cell);
+    currentCtx.fillStyle = colors.blockColor;
+    currentCtx.fillRect(p.blockX, p.blockY, p.blockW, p.blockH);
 
     // 英文
-    drawEnglish(p.size, colors);
+    drawEnglish(p, colors);
   }
 
-  /* === 预览渲染（RAF 节流） === */
+  // 田字格预览
+  function draw(mode) {
+    drawTo(ctx, getDrawParams("grid"), resolveColors(mode));
+  }
+
+  // 横排预览（用横排独立像素）
+  function drawH(mode) {
+    drawTo(ctxH, getDrawParams("row", Number(sizeInputH.value)), resolveColors(mode));
+  }
+
+  /* === 预览渲染（RAF 节流，同时渲染田字格和横排） === */
 
   let rafId = null;
   function renderPreview() {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(function () {
       rafId = null;
-      draw(getMode());
+      const mode = getMode();
+      draw(mode);
+      drawH(mode);
     });
   }
 
   /* === 下载 === */
 
-  function downloadBlob(mode, filename) {
-    draw(mode);
-    canvas.toBlob(function (blob) {
+  // 通用：在指定 canvas 上绘制并导出 PNG
+  function downloadBlobTo(targetCanvas, p, mode, filename) {
+    drawTo(targetCanvas.getContext("2d"), p, resolveColors(mode));
+    targetCanvas.toBlob(function (blob) {
       if (!blob) return;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -688,27 +833,39 @@
   }
 
   function download() {
-    downloadBlob(getMode(), getCharName() + "_" + getMode() + ".png");
+    downloadBlobTo(canvas, getDrawParams("grid"), getMode(), getCharName() + "_" + getMode() + ".png");
+  }
+
+  function downloadH() {
+    downloadBlobTo(canvasH, getDrawParams("row", Number(sizeInputH.value)), getMode(), getCharName() + "_" + getMode() + "_h.png");
   }
 
   // 下载 SVG（矢量导出，嵌入字体 Base64 保证字体显示）
-  function downloadSvg() {
+  // layout: 'grid' 或 'row'；sizeOverride: 横排独立像素
+  async function downloadSvg(layout, sizeOverride) {
     const mode = getMode();
     const colors = resolveColors(mode);
-    const p = getDrawParams();
+    const p = getDrawParams(layout, sizeOverride);
     const knockout = colors.enKnockout;
-    const englishTexts = calcEnglishBlocks(p.size, colors);
+    const englishTexts = calcEnglishBlocks(p, colors);
+    const w = p.canvasW, h = p.canvasH;
+    const suffix = layout === "row" ? "_h" : "";
 
     let svg = '<?xml version="1.0" encoding="UTF-8"?>';
-    svg += '<svg xmlns="http://www.w3.org/2000/svg" width="' + p.size + '" height="' + p.size + '" viewBox="0 0 ' + p.size + " " + p.size + '">';
+    svg += '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + " " + h + '">';
 
     // 嵌入字体（Base64 数据 URI，CDATA 包裹防止 XML 解析问题）
+    // 惰性获取：仅在导出 SVG 时 fetch，结果缓存复用；SMALL 复用 EN 字体，只嵌入两份 @font-face
+    const [cnB64, enB64] = await Promise.all([
+      fetchFontBase64(FONT_URL).catch(function () { return ""; }),
+      fetchFontBase64(EN_FONT_URL).catch(function () { return ""; }),
+    ]);
     let cssRules = "";
-    if (fontBase64) {
-      cssRules += "@font-face { font-family: '" + FONT_NAME + "'; src: url('data:application/octet-stream;base64," + fontBase64 + "'); }";
+    if (cnB64) {
+      cssRules += "@font-face { font-family: '" + FONT_NAME + "'; src: url('data:application/octet-stream;base64," + cnB64 + "'); }";
     }
-    if (enFontBase64) {
-      cssRules += "@font-face { font-family: '" + EN_FONT_NAME + "'; src: url('data:application/octet-stream;base64," + enFontBase64 + "'); }";
+    if (enB64) {
+      cssRules += "@font-face { font-family: '" + EN_FONT_NAME + "'; src: url('data:application/octet-stream;base64," + enB64 + "'); }";
     }
     if (cssRules) {
       svg += "<style type=\"text/css\"><![CDATA[" + cssRules + "]]></style>";
@@ -718,20 +875,20 @@
     if (isCustomImageEnabled()) {
       // 获取 cover 模式图片的 data URL
       const tmpC = document.createElement("canvas");
-      tmpC.width = p.size;
-      tmpC.height = p.size;
+      tmpC.width = w;
+      tmpC.height = h;
       const tmpCx = tmpC.getContext("2d");
-      const ir = Math.max(p.size / customImage.width, p.size / customImage.height);
+      const ir = Math.max(w / customImage.width, h / customImage.height);
       const iw = customImage.width * ir;
       const ih = customImage.height * ir;
-      tmpCx.drawImage(customImage, (p.size - iw) / 2, (p.size - ih) / 2, iw, ih);
+      tmpCx.drawImage(customImage, (w - iw) / 2, (h - ih) / 2, iw, ih);
       const imgDataUrl = tmpC.toDataURL("image/png");
       const imgMode = getImageMode();
 
       if (imgMode === "textTransparent") {
-        // 图片铺满 + mask 挖空文字位置
+        // 图片铺满 + mask 挖空文字位置（含小字）
         svg += '<defs><mask id="imgTextMask">';
-        svg += '<rect width="' + p.size + '" height="' + p.size + '" fill="white"/>';
+        svg += '<rect width="' + w + '" height="' + h + '" fill="white"/>';
         if (fontReady) {
           p.chars.forEach(function (ch, i) {
             svg += glyphSvg(
@@ -741,13 +898,14 @@
             );
           });
         }
+        svg += smallTextSvg(p, "#000000");
         svg += englishSvg(englishTexts, "#000000");
         svg += "</mask></defs>";
-        svg += '<image href="' + imgDataUrl + '" width="' + p.size + '" height="' + p.size + '" mask="url(#imgTextMask)"/>';
+        svg += '<image href="' + imgDataUrl + '" width="' + w + '" height="' + h + '" mask="url(#imgTextMask)"/>';
       } else {
         // 背景透明 + 图片 pattern 填充文字/矩形，英文挖空透明
-        svg += '<defs><pattern id="imgPattern" width="' + p.size + '" height="' + p.size + '" patternUnits="userSpaceOnUse">';
-        svg += '<image href="' + imgDataUrl + '" width="' + p.size + '" height="' + p.size + '"/>';
+        svg += '<defs><pattern id="imgPattern" width="' + w + '" height="' + h + '" patternUnits="userSpaceOnUse">';
+        svg += '<image href="' + imgDataUrl + '" width="' + w + '" height="' + h + '"/>';
         svg += "</pattern></defs>";
         // 汉字用 pattern 填充
         if (fontReady) {
@@ -759,23 +917,28 @@
             );
           });
         }
+        // 小字用 pattern 填充
+        svg += smallTextSvg(p, "url(#imgPattern)");
         // 矩形用 pattern 填充（mask 挖空英文）
         svg += '<defs><mask id="blockMask">';
-        svg += '<rect x="' + p.cell + '" y="' + p.cell + '" width="' + p.cell + '" height="' + p.cell + '" fill="white"/>';
+        svg += '<rect x="' + p.blockX + '" y="' + p.blockY + '" width="' + p.blockW + '" height="' + p.blockH + '" fill="white"/>';
         svg += englishSvg(englishTexts, "#000000");
         svg += "</mask></defs>";
-        svg += '<rect x="' + p.cell + '" y="' + p.cell + '" width="' + p.cell + '" height="' + p.cell + '" fill="url(#imgPattern)" mask="url(#blockMask)"/>';
+        svg += '<rect x="' + p.blockX + '" y="' + p.blockY + '" width="' + p.blockW + '" height="' + p.blockH + '" fill="url(#imgPattern)" mask="url(#blockMask)"/>';
       }
 
       svg += "</svg>";
-      downloadSvgBlob(svg, mode);
+      downloadSvgBlob(svg, mode, suffix);
       return;
     }
 
     /* --- 普通模式 SVG --- */
     if (colors.bg) {
-      svg += '<rect width="' + p.size + '" height="' + p.size + '" fill="' + colors.bg + '"/>';
+      svg += '<rect width="' + w + '" height="' + h + '" fill="' + colors.bg + '"/>';
     }
+
+    // 小字（汉字之前绘制）
+    svg += smallTextSvg(p, colors.smallColor);
 
     if (knockout) {
       // 透明模式：汉字直接绘制，方块+英文用 mask 挖空
@@ -789,10 +952,10 @@
         });
       }
       svg += '<defs><mask id="blockMask">';
-      svg += '<rect x="' + p.cell + '" y="' + p.cell + '" width="' + p.cell + '" height="' + p.cell + '" fill="white"/>';
+      svg += '<rect x="' + p.blockX + '" y="' + p.blockY + '" width="' + p.blockW + '" height="' + p.blockH + '" fill="white"/>';
       svg += englishSvg(englishTexts, "#000000");
       svg += "</mask></defs>";
-      svg += '<rect x="' + p.cell + '" y="' + p.cell + '" width="' + p.cell + '" height="' + p.cell + '" fill="' + colors.blockColor + '" mask="url(#blockMask)"/>';
+      svg += '<rect x="' + p.blockX + '" y="' + p.blockY + '" width="' + p.blockW + '" height="' + p.blockH + '" fill="' + colors.blockColor + '" mask="url(#blockMask)"/>';
     } else {
       // 非透明模式：汉字、方块、英文分别绘制
       if (fontReady) {
@@ -811,12 +974,16 @@
             '" text-anchor="middle" dominant-baseline="middle">' + esc(ch) + "</text>";
         });
       }
-      svg += '<rect x="' + p.cell + '" y="' + p.cell + '" width="' + p.cell + '" height="' + p.cell + '" fill="' + colors.blockColor + '"/>';
+      svg += '<rect x="' + p.blockX + '" y="' + p.blockY + '" width="' + p.blockW + '" height="' + p.blockH + '" fill="' + colors.blockColor + '"/>';
       svg += englishSvg(englishTexts, null);
     }
 
     svg += "</svg>";
-    downloadSvgBlob(svg, mode);
+    downloadSvgBlob(svg, mode, suffix);
+  }
+
+  function downloadSvgH() {
+    downloadSvg("row", Number(sizeInputH.value));
   }
 
   // 生成英文 SVG <g> 元素
@@ -834,12 +1001,20 @@
     return s + "</g>";
   }
 
-  // 下载 SVG Blob
-  function downloadSvgBlob(svg, mode) {
+  // 生成小字 SVG <text> 元素（dominant-baseline=hanging 对应 canvas textBaseline=top）
+  function smallTextSvg(p, fill) {
+    if (!p.smallOn) return "";
+    return '<text x="' + p.smallDrawX.toFixed(2) + '" y="' + p.smallDrawY.toFixed(2) +
+      '" font-family="' + SMALL_FONT_NAME + '" font-size="' + p.smallSizePx.toFixed(2) +
+      '" fill="' + fill + '" dominant-baseline="hanging">' + esc(p.smallText) + "</text>";
+  }
+
+  // 下载 SVG Blob（suffix 用于区分横排 _h）
+  function downloadSvgBlob(svg, mode, suffix) {
     const blob = new Blob([svg], { type: "image/svg+xml;charset=UTF-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = getCharName() + "_" + mode + ".svg";
+    a.download = getCharName() + "_" + mode + (suffix || "") + ".svg";
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -929,6 +1104,34 @@
   [enGlobalSize, enGlobalX, enGlobalY, enLineSpacing].forEach(function (el) {
     el.addEventListener("input", renderPreview);
   });
+  // 自动对齐开关：开启时保存字号快照，关闭时恢复
+  // 快照变量封入闭包；initEnAlignSnapshot 在 addEnLine 之后调用（此时 DOM 才存在）
+  let initEnAlignSnapshot;
+  (function () {
+    let snapshot = null;
+    enAutoAlign.addEventListener("change", function () {
+      const sizeInputs = enLineList.querySelectorAll(".en-line-size");
+      if (enAutoAlign.checked) {
+        // 开启：保存当前字号快照
+        snapshot = Array.prototype.map.call(sizeInputs, function (inp) { return inp.value; });
+      } else {
+        // 关闭：恢复快照
+        if (snapshot) {
+          sizeInputs.forEach(function (inp, i) {
+            if (snapshot[i] != null) inp.value = snapshot[i];
+          });
+          snapshot = null;
+        }
+      }
+      renderPreview();
+    });
+    initEnAlignSnapshot = function () {
+      if (enAutoAlign.checked) {
+        const sizeInputs0 = enLineList.querySelectorAll(".en-line-size");
+        snapshot = Array.prototype.map.call(sizeInputs0, function (inp) { return inp.value; });
+      }
+    };
+  })();
 
   // 汉字输入：检测字符变化时自动调整字号
   let lastChars = [char1.value, char2.value, char3.value];
@@ -945,15 +1148,24 @@
   [size1, size2, size3].forEach(function (el) { el.addEventListener("input", renderPreview); });
   [x1, y1, x2, y2, x3, y3].forEach(function (el) { el.addEventListener("input", renderPreview); });
   [cnGlobalSize, cnGlobalX, cnGlobalY].forEach(function (el) { el.addEventListener("input", renderPreview); });
+  // size 变化后重新计算偏移，确保各尺寸下字符仍紧贴格子边缘
+  // autoFitAll 涉及像素扫描开销较大，加 200ms debounce；renderPreview 即时反馈
+  let sizeInputTimer = null;
   sizeInput.addEventListener("input", function () {
-    // size 变化后重新计算偏移，确保各尺寸下字符仍紧贴格子边缘
-    autoFitAll();
     renderPreview();
+    clearTimeout(sizeInputTimer);
+    sizeInputTimer = setTimeout(function () {
+      autoFitAll();
+      renderPreview();
+    }, 200);
   });
+
+  sizeInputH.addEventListener("input", renderPreview);
 
   // 样式切换
   modeInputs.forEach(function (el) {
     el.addEventListener("change", function () {
+      currentMode = el.value;
       // 切换到自定义模式时，以上一个非自定义模式默认色作为起点
       if (el.value === "custom") {
         syncColorsFromMode(lastNonCustomMode);
@@ -966,7 +1178,9 @@
   });
 
   downloadBtn.addEventListener("click", download);
-  downloadSvgBtn.addEventListener("click", downloadSvg);
+  downloadSvgBtn.addEventListener("click", function () { downloadSvg("grid"); });
+  downloadHBtn.addEventListener("click", downloadH);
+  downloadHSvgBtn.addEventListener("click", downloadSvgH);
 
   // 自定义颜色面板事件
   [color1, color2, color3, bgColor, blockColorInput].forEach(function (el) {
@@ -997,6 +1211,15 @@
   });
   [textTransparentRadio, bgImageTransparentRadio].forEach(function (el) {
     el.addEventListener("change", renderPreview);
+  });
+
+  // 小字板块事件
+  smallEnabled.addEventListener("change", function () {
+    updateSmallPanelState();
+    renderPreview();
+  });
+  [smallText, smallSize, smallX, smallY, smallColor, smallColorAlpha].forEach(function (el) {
+    el.addEventListener("input", renderPreview);
   });
 
   /* === 更新日志抽屉 === */
@@ -1138,10 +1361,11 @@
     let target = 0;
     setPhase("init");
     setTimeout(function () { setPhase("loading"); }, 100);
-    // 800ms 后推进到 90%（等字体），字体就绪后推进到 100%
-    setTimeout(function () { target = fontsReady ? 100 : 90; }, 800);
+    // 800ms 后推进到 90%；字体就绪（Promise）后推进到 100%
+    setTimeout(function () { if (target < 90) target = 90; }, 800);
+    fontsReadyPromise.then(function () { target = 100; });
 
-    // RAF 动画：display 追赶 target，达到 100 后停止
+    // RAF 动画：display 追赶 target；达到 100 后直接触发阶段流转（取代 setInterval 轮询）
     function animate() {
       if (display < target) {
         const step = Math.max(0.5, (target - display) * 0.15);
@@ -1152,17 +1376,7 @@
       }
       if (display < 100) {
         requestAnimationFrame(animate);
-      }
-    }
-    animate();
-
-    // 定时检测：字体就绪后推进到 100%，完成后阶段流转
-    const checkDone = setInterval(function () {
-      if (fontsReady && target < 100) {
-        target = 100;
-      }
-      if (display >= 100) {
-        clearInterval(checkDone);
+      } else {
         setPhase("complete");
         setTimeout(function () {
           setPhase("sweeping");
@@ -1171,16 +1385,40 @@
             setTimeout(function () {
               cover.style.display = "none";
               document.body.style.overflow = "";
+              startFooterQuote();
             }, 300);
           }, 400);
         }, 100);
       }
-    }, 50);
+    }
+    animate();
+
+    // 页脚终结技轮播：随机展示一句，每 5 秒直接切换（不闪烁）
+    function startFooterQuote() {
+      const el = document.getElementById("footerQuote");
+      if (!el) return;
+      let last = -1;
+      function pick() {
+        if (ultQuotes.length <= 1) return ultQuotes[0];
+        let i;
+        do { i = Math.floor(Math.random() * ultQuotes.length); }
+        while (i === last);
+        last = i;
+        return ultQuotes[i];
+      }
+      el.textContent = pick();
+      setInterval(function () {
+        el.textContent = pick();
+      }, 5000);
+    }
   })();
 
   /* === 初始化 === */
   loadFonts();
   addEnLine("ARKNIGHTS", 100);
   addEnLine("ENDFIELD", 100);
+  // 初始默认开启自动对齐时保存字号快照，供关闭时恢复
+  initEnAlignSnapshot();
   updateCustomPanelState();
+  updateSmallPanelState();
 })();
