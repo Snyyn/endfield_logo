@@ -1,9 +1,9 @@
 (function () {
   /* === 常量 === */
   const FONT_NAME = "EndfieldFont";
-  const FONT_URL = "fonts/font.ttf";
-  const EN_FONT_NAME = "GilroyBlack";
-  const EN_FONT_URL = "fonts/gilroy-black-6.otf";
+  const FONT_URL = "fonts/HYLingXinSquare95W.ttf";
+  const EN_FONT_NAME = "HarmonyOSBlack";
+  const EN_FONT_URL = "fonts/HarmonyOS_Sans_Black.ttf";
 
   /* === DOM 引用 === */
   const char1 = document.getElementById("char1");
@@ -142,7 +142,7 @@
 
     fontsReady = true;
     renderPreview();
-    autoFit(0);
+    autoFitAll();
     renderPreview();
   }
 
@@ -235,6 +235,7 @@
   }
 
   // 自动调整单个字符的字号和偏移，使其紧贴格子边缘
+  // 在实际渲染 cellSize 下扫描，消除字体度量非线性导致的跨尺寸偏移
   function autoFitChar(index) {
     if (!fontReady) return;
     const inputs = [
@@ -246,8 +247,11 @@
     const ch = inp.char.value.slice(0, 1);
     if (!ch) return;
 
-    const cellSize = 256;
-    const pad = 60;
+    // 用实际渲染尺寸扫描，避免字体度量非线性导致的偏移
+    const renderSize = Math.min(Math.max(Math.round(Number(sizeInput.value) || 512), 64), 4096);
+    const cellSize = renderSize / 2;
+    const offScale = renderSize / 512; // 512 基准缩放（getDrawParams 会乘回）
+    const pad = Math.ceil(cellSize * 0.234); // 按比例留白，防止字形超出扫描区
     const target = cellSize + 2;
     const scanPixels = makeScanPixels(ch, cellSize, pad);
 
@@ -277,12 +281,20 @@
       offsetY = Math.ceil(cellSize - r.actH - r.actTop);
     }
 
-    inp.x.value = offsetX;
-    inp.y.value = offsetY;
+    // 转回 512 基准存储（渲染时 getDrawParams 会乘 offScale 还原为实际像素）
+    inp.x.value = Math.round(offsetX / offScale);
+    inp.y.value = Math.round(offsetY / offScale);
   }
 
   function autoFit(index) {
     autoFitChar(index);
+  }
+
+  // 三个汉字全部自动调整（size 变化或初始化时调用）
+  function autoFitAll() {
+    autoFitChar(0);
+    autoFitChar(1);
+    autoFitChar(2);
   }
 
   /* === 颜色解析 === */
@@ -933,7 +945,11 @@
   [size1, size2, size3].forEach(function (el) { el.addEventListener("input", renderPreview); });
   [x1, y1, x2, y2, x3, y3].forEach(function (el) { el.addEventListener("input", renderPreview); });
   [cnGlobalSize, cnGlobalX, cnGlobalY].forEach(function (el) { el.addEventListener("input", renderPreview); });
-  sizeInput.addEventListener("input", renderPreview);
+  sizeInput.addEventListener("input", function () {
+    // size 变化后重新计算偏移，确保各尺寸下字符仍紧贴格子边缘
+    autoFitAll();
+    renderPreview();
+  });
 
   // 样式切换
   modeInputs.forEach(function (el) {
