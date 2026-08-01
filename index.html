@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="preload" href="fonts/font.ttf" as="fetch" crossorigin>
+  <link rel="preload" href="fonts/gilroy-black-6.otf" as="fetch" crossorigin>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -24,6 +26,9 @@
       </div>
     </div>
     <div class="sweep-overlay"></div>
+    <div class="center-content">
+      <div class="loading-side-text" id="loading-quote"></div>
+    </div>
   </div>
 
   <div class="hud hud-tl"></div>
@@ -40,7 +45,7 @@
       <div class="layout">
       <div class="controls">
         <div class="panel">
-          <div class="panel-title"><span class="panel-mark">CN</span>中文</div>
+          <div class="panel-title"><span class="panel-mark">CN</span>中文 / CHINESE</div>
           <div class="char-fields">
           <label class="field">
             <span class="tech-text">上左</span>
@@ -117,7 +122,7 @@
         </div>
         </div>
         <div class="panel">
-          <div class="panel-title"><span class="panel-mark">EN</span>英文</div>
+          <div class="panel-title"><span class="panel-mark">EN</span>英文 / ENGLISH</div>
           <div class="row2">
           <div class="field">
             <span class="tech-text">英文行</span>
@@ -148,19 +153,67 @@
           </div>
         </div>
         </div>
-      </div>
-
-      <div class="right-col">
-        <div class="panel-title">
-          <span class="panel-mark">OUT</span>输出
-          <span class="live-status"><span class="live-dot"></span>LIVE</span>
+        <div class="panel custom-panel" id="customPanel">
+          <div class="panel-title">
+            <span class="panel-mark">CUSTOM</span>自定义 / CUSTOM
+          </div>
+          <div class="custom-hint" id="customHint">请将样式设为自定义</div>
+          <div class="custom-body" id="customBody">
+            <div class="color-area" id="colorArea">
+              <div class="field">
+                <span class="tech-text">汉字颜色</span>
+                <div class="color-fields">
+                  <div class="labeled">
+                    <span class="mini-label">上左</span>
+                    <input type="color" id="color1" value="#ffffff" class="color-input">
+                    <input type="range" id="color1Alpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
+                  </div>
+                  <div class="labeled">
+                    <span class="mini-label">上右</span>
+                    <input type="color" id="color2" value="#ffffff" class="color-input">
+                    <input type="range" id="color2Alpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
+                  </div>
+                  <div class="labeled">
+                    <span class="mini-label">下左</span>
+                    <input type="color" id="color3" value="#ffffff" class="color-input">
+                    <input type="range" id="color3Alpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
+                  </div>
+                </div>
+              </div>
+              <div class="scan-line"></div>
+              <div class="field">
+                <span class="tech-text">矩形颜色 / 背景颜色</span>
+                <div class="bg-color-row">
+                  <div class="labeled">
+                    <span class="mini-label">矩形颜色</span>
+                    <input type="color" id="blockColor" value="#ffffff" class="color-input">
+                    <input type="range" id="blockColorAlpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
+                  </div>
+                  <div class="labeled">
+                    <span class="mini-label">背景颜色</span>
+                    <input type="color" id="bgColor" value="#000000" class="color-input">
+                    <input type="range" id="bgColorAlpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="custom-hint image-hint" id="customImageHint">请关闭启用自定义图片以设置颜色</div>
+            <div class="scan-line"></div>
+            <div class="field custom-image-field">
+              <span class="tech-text">自定义图片</span>
+              <div class="mode-row custom-image-row" id="customImageRow">
+                <label><input type="checkbox" id="customImageEnabled">启用自定义图片</label>
+                <label for="customImageUpload" class="upload-btn">上传图片</label>
+                <input type="file" id="customImageUpload" accept="image/*" hidden>
+                <label><input type="radio" name="imageMode" value="textTransparent" id="textTransparent" checked>文字透明</label>
+                <label><input type="radio" name="imageMode" value="bgTransparent" id="bgImageTransparent">背景透明</label>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="preview-wrap">
-          <canvas id="preview"></canvas>
-        </div>
-        <div class="below-preview">
+        <div class="panel">
+          <div class="panel-title"><span class="panel-mark">STYLE</span>样式 / STYLE</div>
           <div class="field">
-            <span class="tech-text">背景样式</span>
             <div class="mode-row">
               <input type="radio" name="bgMode" value="black" id="modeBlack" checked>
               <label for="modeBlack">黑底白字</label>
@@ -170,24 +223,74 @@
               <label for="modeTransparent">透明白字</label>
               <input type="radio" name="bgMode" value="transparent_black" id="modeTransparentBlack">
               <label for="modeTransparentBlack">透明黑字</label>
+              <input type="radio" name="bgMode" value="custom" id="modeCustom">
+              <label for="modeCustom">自定义</label>
             </div>
           </div>
-          <label class="field">
-            <span class="tech-text">图片像素</span>
-            <input type="number" id="sizeInput" min="64" max="4096" step="32" value="512">
-          </label>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="panel-title">
+          <span class="panel-mark">OUT</span>输出 / OUTPUT
+          <span class="live-status"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="preview-wrap">
+          <canvas id="preview"></canvas>
+        </div>
+        <div class="below-preview">
           <div class="actions">
+            <label class="field pixel-field">
+              <span class="tech-text">图片像素</span>
+              <input type="number" id="sizeInput" min="64" max="4096" step="32" value="512">
+            </label>
             <button id="downloadBtn" class="ef-btn"><span class="ef-btn-indicator"></span><span class="ef-btn-text">下载 PNG</span></button>
-            <button id="downloadAllBtn" class="ef-btn endspace-btn-3d"><span class="ef-btn-indicator"></span><span class="ef-btn-text">下载全部</span></button>
+            <button id="downloadSvgBtn" class="ef-btn"><span class="ef-btn-indicator"></span><span class="ef-btn-text">下载 SVG（实验性）</span></button>
           </div>
         </div>
       </div>
     </div>
     </div>
 
+  <!-- ============================================ Changelog Drawer -->
+  <div class="changelog-drawer" id="changelogDrawer">
+    <div class="drawer-header">
+      <h3 class="drawer-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        <span>更新日志 / CHANGELOG</span>
+      </h3>
+      <button class="drawer-close" id="changelogClose" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+      <div class="log-item">
+        <span class="log-date">2026-08-01</span><br>
+        添加了自动调整字号及坐标偏移功能<br>
+        添加了下载SVG（实验性功能）<br>
+        添加了更新日志<br>
+        添加了自定义面板，现在可以上传使用自己的图片、自定义中文颜色和背景颜色及透明度<br>
+        优化了界面<br>
+        <del>移除了Herobrine</del>
+      </div>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="spectrum-bar footer-spectrum"></div>
     <div class="footer-content">
+      <button id="changelogBtn" type="button" class="footer-video-link footer-changelog-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        <span>更新日志 / CHANGELOG</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <span class="footer-video-meta">// VIDEO_LINK / BILIBILI</span>
+      <a href="https://www.bilibili.com/video/BV1L8GN63E7w/" target="_blank" rel="noopener noreferrer" class="footer-video-link">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.143.134.213.213h4.267c.07-.08.142-.142.213-.213l2.507-2.347c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zm1.92 3.573c.267-.249.574-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906l-2.56 2.56a1.234 1.234 0 0 1-.907.374c-.355 0-.667-.124-.933-.373l-1.173-1.174a1.234 1.234 0 0 1-.374-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .662.151.929.4l.24.24 1.6-1.586zm9.334 0c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906l-2.56 2.56a1.234 1.234 0 0 1-.907.374c-.355 0-.667-.124-.933-.373l-1.173-1.174a1.234 1.234 0 0 1-.374-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .662.151.929.4l.24.24 1.6-1.586z"/></svg>
+        <span>我做了一个终末地风格图标生成器</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l10-10M7 7h10v10"/></svg>
+      </a>
+      <p class="footer-thanks">如果网站对你有帮助，麻烦三连支持一下！</p>
       <div class="footer-copyright">© 2026 Nuclear Creeper. All rights reserved.</div>
     </div>
     <div class="footer-corner"></div>
