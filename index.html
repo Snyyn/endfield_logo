@@ -45,120 +45,73 @@
       <div class="spectrum-bar titlebar-spectrum"></div>
     </div>
 
+    <div class="doc-line">
+      <span class="doc-id">ARKNIGHTS: ENDFIELD LOGO GENERATOR // VERSION: 1.2.0</span>
+      <span style="flex:1"></span>
+      <span class="online-status">
+        <span class="online-dot"></span>
+        ONLINE
+      </span>
+    </div>
+
       <div class="layout">
       <div class="controls">
         <div class="panel">
           <div class="panel-title"><span class="panel-mark">CN</span>中文 / CHINESE</div>
-          <div class="char-fields">
-          <label class="field">
-            <span class="tech-text">上左</span>
-            <input type="text" id="char1" maxlength="1" value="终">
-            <div class="labeled">
-              <span class="mini-label">字号</span>
-              <input type="number" class="char-size" id="size1" min="10" max="500" step="5" value="103" title="字号（占格子的百分比）">
-            </div>
-            <div class="pos-row">
-              <div class="labeled">
-                <span class="mini-label">横坐标偏移</span>
-                <input type="number" id="x1" min="-500" max="500" step="1" value="-15" title="横坐标偏移（像素）">
-              </div>
-              <div class="labeled">
-                <span class="mini-label">纵坐标偏移</span>
-                <input type="number" id="y1" min="-500" max="500" step="1" value="-1" title="纵坐标偏移（像素）">
-              </div>
-            </div>
-          </label>
-          <label class="field">
-            <span class="tech-text">上右</span>
-            <input type="text" id="char2" maxlength="1" value="末">
-            <div class="labeled">
-              <span class="mini-label">字号</span>
-              <input type="number" class="char-size" id="size2" min="10" max="500" step="5" value="103" title="字号（占格子的百分比）">
-            </div>
-            <div class="pos-row">
-              <div class="labeled">
-                <span class="mini-label">横坐标偏移</span>
-                <input type="number" id="x2" min="-500" max="500" step="1" value="-19" title="横坐标偏移（像素）">
-              </div>
-              <div class="labeled">
-                <span class="mini-label">纵坐标偏移</span>
-                <input type="number" id="y2" min="-500" max="500" step="1" value="3" title="纵坐标偏移（像素）">
+          <div class="panel-body">
+            <div class="char-fields" id="charFields"></div>
+            <div class="scan-line"></div>
+            <div class="field">
+              <div class="cn-global-row">
+                <div class="labeled">
+                  <span class="mini-label">总字号</span>
+                  <input type="number" id="cnGlobalSize" min="10" max="500" step="5" value="100" title="汉字总字号（占格子百分比）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label">总横坐标偏移</span>
+                  <input type="number" id="cnGlobalX" min="-500" max="500" step="1" value="0" title="整体横坐标偏移（像素）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label">总纵坐标偏移</span>
+                  <input type="number" id="cnGlobalY" min="-500" max="500" step="1" value="0" title="整体纵坐标偏移（像素）">
+                </div>
               </div>
             </div>
-          </label>
-          <label class="field">
-            <span class="tech-text">下左</span>
-            <input type="text" id="char3" maxlength="1" value="地">
-            <div class="labeled">
-              <span class="mini-label">字号</span>
-              <input type="number" class="char-size" id="size3" min="10" max="500" step="5" value="103" title="字号（占格子的百分比）">
-            </div>
-            <div class="pos-row">
-              <div class="labeled">
-                <span class="mini-label">横坐标偏移</span>
-                <input type="number" id="x3" min="-500" max="500" step="1" value="-16" title="横坐标偏移（像素）">
-              </div>
-              <div class="labeled">
-                <span class="mini-label">纵坐标偏移</span>
-                <input type="number" id="y3" min="-500" max="500" step="1" value="-4" title="纵坐标偏移（像素）">
-              </div>
-            </div>
-          </label>
-      <div class="scan-line"></div>
-      <div class="field">
-        <span class="tech-text">中文整体调整</span>
-        <div class="cn-global-row">
-          <div class="labeled">
-            <span class="mini-label">总字号</span>
-            <input type="number" id="cnGlobalSize" min="10" max="500" step="5" value="100" title="汉字总字号（占格子百分比）">
           </div>
-          <div class="labeled">
-            <span class="mini-label">总横坐标偏移</span>
-            <input type="number" id="cnGlobalX" min="-500" max="500" step="1" value="0" title="整体横坐标偏移（像素）">
-          </div>
-          <div class="labeled">
-            <span class="mini-label">总纵坐标偏移</span>
-            <input type="number" id="cnGlobalY" min="-500" max="500" step="1" value="0" title="整体纵坐标偏移（像素）">
-          </div>
-          </div>
-        </div>
-        </div>
         </div>
         <div class="panel">
           <div class="panel-title"><span class="panel-mark">EN</span>英文 / ENGLISH</div>
-          <div class="row2">
-          <div class="field">
-            <span class="tech-text">英文行</span>
-            <div id="enLineList"></div>
-            <button id="addEnBtn" type="button" class="add-btn">+ 新建英文</button>
-          </div>
-          <div class="scan-line"></div>
-          <div class="field">
-            <span class="tech-text">英文整体调整</span>
-            <div class="en-global-row">
-              <div class="labeled">
-                <span class="mini-label">总字号</span>
-                <input type="number" id="enGlobalSize" min="10" max="500" step="5" value="100" title="英文总字号（占方块百分比）">
-              </div>
-              <div class="labeled">
-                <span class="mini-label">总横坐标偏移</span>
-                <input type="number" id="enGlobalX" min="-500" max="500" step="1" value="0" title="整体横坐标偏移（像素）">
-              </div>
-              <div class="labeled">
-                <span class="mini-label">总纵坐标偏移</span>
-                <input type="number" id="enGlobalY" min="-500" max="500" step="1" value="0" title="整体纵坐标偏移（像素）">
-              </div>
-              <div class="labeled">
-                <span class="mini-label">行间距</span>
-                <input type="number" id="enLineSpacing" min="0.1" max="3" step="0.05" value="0.85" title="英文行间距（倍数字号）">
-              </div>
-              <div class="labeled">
-                <span class="mini-label"> </span>
-                <label class="en-align-toggle"><input type="checkbox" id="enAutoAlign" checked>自动对齐</label>
+          <div class="panel-body">
+            <div class="field">
+              <div id="enLineList"></div>
+              <button id="addEnBtn" type="button" class="add-btn">+ 新建英文行</button>
+            </div>
+            <div class="scan-line"></div>
+            <div class="field">
+              <div class="en-global-row">
+                <div class="labeled">
+                  <span class="mini-label">总字号</span>
+                  <input type="number" id="enGlobalSize" min="10" max="500" step="5" value="100" title="英文总字号（占方块百分比）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label">总横坐标偏移</span>
+                  <input type="number" id="enGlobalX" min="-500" max="500" step="1" value="0" title="整体横坐标偏移（像素）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label">总纵坐标偏移</span>
+                  <input type="number" id="enGlobalY" min="-500" max="500" step="1" value="0" title="整体纵坐标偏移（像素）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label">行间距</span>
+                  <input type="number" id="enLineSpacing" min="0.1" max="3" step="0.05" value="0.85" title="英文行间距（倍数字号）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label"> </span>
+                  <label class="en-align-toggle"><input type="checkbox" id="enAutoAlign" checked>自动对齐</label>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
         <div class="panel small-panel" id="smallPanel">
           <div class="panel-title">
@@ -168,26 +121,23 @@
               <span class="panel-toggle-label">启用</span>
             </label>
           </div>
-          <div class="small-body" id="smallBody">
+          <div class="panel-body" id="smallBody">
             <div class="field">
-              <span class="tech-text">文字</span>
               <input type="text" id="smallText" value="明日方舟" maxlength="20">
             </div>
-            <div class="row2">
-              <div class="field">
-                <div class="small-ctrl-row">
-                  <div class="labeled">
-                    <span class="mini-label">字号</span>
-                    <input type="number" id="smallSize" min="2" max="100" step="1" value="20" title="小字字号（占格子百分比）">
-                  </div>
-                  <div class="labeled">
-                    <span class="mini-label">横坐标偏移</span>
-                    <input type="number" id="smallX" min="-500" max="500" step="1" value="0" title="横坐标偏移（像素）">
-                  </div>
-                  <div class="labeled">
-                    <span class="mini-label">纵坐标偏移</span>
-                    <input type="number" id="smallY" min="-500" max="500" step="1" value="0" title="纵坐标偏移（像素）">
-                  </div>
+            <div class="field">
+              <div class="small-ctrl-row">
+                <div class="labeled">
+                  <span class="mini-label">字号</span>
+                  <input type="number" id="smallSize" min="2" max="100" step="1" value="20" title="小字字号（占格子百分比）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label">横坐标偏移</span>
+                  <input type="number" id="smallX" min="-500" max="500" step="1" value="0" title="横坐标偏移（像素）">
+                </div>
+                <div class="labeled">
+                  <span class="mini-label">纵坐标偏移</span>
+                  <input type="number" id="smallY" min="-500" max="500" step="1" value="0" title="纵坐标偏移（像素）">
                 </div>
               </div>
             </div>
@@ -198,44 +148,26 @@
             <span class="panel-mark">CUSTOM</span>自定义 / CUSTOM
           </div>
           <div class="custom-hint" id="customHint">请将样式设为自定义</div>
-          <div class="custom-body" id="customBody">
+          <div class="panel-body" id="customBody">
             <div class="color-area" id="colorArea">
               <div class="field">
-                <span class="tech-text">中文颜色</span>
-                <div class="color-fields">
-                  <div class="labeled">
-                    <span class="mini-label">上左</span>
-                    <input type="color" id="color1" value="#ffffff" class="color-input">
-                    <input type="range" id="color1Alpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
-                  </div>
-                  <div class="labeled">
-                    <span class="mini-label">上右</span>
-                    <input type="color" id="color2" value="#ffffff" class="color-input">
-                    <input type="range" id="color2Alpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
-                  </div>
-                  <div class="labeled">
-                    <span class="mini-label">下左</span>
-                    <input type="color" id="color3" value="#ffffff" class="color-input">
-                    <input type="range" id="color3Alpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
-                  </div>
-                </div>
+                <div class="color-fields" id="colorFields"></div>
               </div>
               <div class="scan-line"></div>
               <div class="field">
-                <span class="tech-text">矩形颜色 / 背景颜色 / 小字颜色</span>
                 <div class="bg-color-row">
                   <div class="labeled">
-                    <span class="mini-label">矩形颜色</span>
+                    <span class="mini-label">矩形</span>
                     <input type="color" id="blockColor" value="#ffffff" class="color-input">
                     <input type="range" id="blockColorAlpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
                   </div>
                   <div class="labeled">
-                    <span class="mini-label">背景颜色</span>
+                    <span class="mini-label">背景</span>
                     <input type="color" id="bgColor" value="#000000" class="color-input">
                     <input type="range" id="bgColorAlpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
                   </div>
                   <div class="labeled">
-                    <span class="mini-label">小字颜色</span>
+                    <span class="mini-label">小字</span>
                     <input type="color" id="smallColor" value="#ffffff" class="color-input">
                     <input type="range" id="smallColorAlpha" min="0" max="100" value="100" class="alpha-slider" title="透明度">
                   </div>
@@ -245,7 +177,6 @@
             <div class="custom-hint image-hint" id="customImageHint">请关闭启用自定义图片以设置颜色</div>
             <div class="scan-line"></div>
             <div class="field custom-image-field">
-              <span class="tech-text">自定义图片</span>
               <div class="mode-row custom-image-row" id="customImageRow">
                 <label><input type="checkbox" id="customImageEnabled">启用自定义图片</label>
                 <label for="customImageUpload" class="upload-btn">上传图片</label>
@@ -258,18 +189,20 @@
         </div>
         <div class="panel">
           <div class="panel-title"><span class="panel-mark">STYLE</span>样式 / STYLE</div>
-          <div class="field">
-            <div class="mode-row">
-              <input type="radio" name="bgMode" value="black" id="modeBlack" checked>
-              <label for="modeBlack">黑底白字</label>
-              <input type="radio" name="bgMode" value="white" id="modeWhite">
-              <label for="modeWhite">白底黑字</label>
-              <input type="radio" name="bgMode" value="transparent" id="modeTransparent">
-              <label for="modeTransparent">透明白字</label>
-              <input type="radio" name="bgMode" value="transparent_black" id="modeTransparentBlack">
-              <label for="modeTransparentBlack">透明黑字</label>
-              <input type="radio" name="bgMode" value="custom" id="modeCustom">
-              <label for="modeCustom">自定义</label>
+          <div class="panel-body">
+            <div class="field">
+              <div class="mode-row">
+                <input type="radio" name="bgMode" value="black" id="modeBlack" checked>
+                <label for="modeBlack">黑底白字</label>
+                <input type="radio" name="bgMode" value="white" id="modeWhite">
+                <label for="modeWhite">白底黑字</label>
+                <input type="radio" name="bgMode" value="transparent" id="modeTransparent">
+                <label for="modeTransparent">透明白字</label>
+                <input type="radio" name="bgMode" value="transparent_black" id="modeTransparentBlack">
+                <label for="modeTransparentBlack">透明黑字</label>
+                <input type="radio" name="bgMode" value="custom" id="modeCustom">
+                <label for="modeCustom">自定义</label>
+              </div>
             </div>
           </div>
         </div>
@@ -323,6 +256,11 @@
             <span>我做了一个终末地风格图标生成器</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l10-10M7 7h10v10"/></svg>
           </a>
+          <a href="https://www.bilibili.com/video/BV14nGV6JERh/?spm_id_from=333.1387.homepage.video_card.click&vd_source=5769fd2c47840cfd54d4d7120ba91afc" target="_blank" rel="noopener noreferrer" class="footer-video-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.143.134.213.213h4.267c.07-.08.142-.142.213-.213l2.507-2.347c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zm1.92 3.573c.267-.249.574-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906l-2.56 2.56a1.234 1.234 0 0 1-.907.374c-.355 0-.667-.124-.933-.373l-1.173-1.174a1.234 1.234 0 0 1-.374-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .662.151.929.4l.24.24 1.6-1.586zm9.334 0c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906l-2.56 2.56a1.234 1.234 0 0 1-.907.374c-.355 0-.667-.124-.933-.373l-1.173-1.174a1.234 1.234 0 0 1-.374-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .662.151.929.4l.24.24 1.6-1.586z"/></svg>
+            <span>终末地风格LOGO生成器大更新！</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l10-10M7 7h10v10"/></svg>
+          </a>
           <p class="footer-thanks">如果网站对你有帮助，麻烦三连支持一下！</p>
           <div class="link-divider"></div>
           <div class="link-section-label">网站主题 / THEME</div>
@@ -357,8 +295,15 @@
     </div>
     <div class="drawer-body">
       <div class="log-item">
-        <span class="log-date">2026-08-01</span><br>
-        现在字号和坐标会自适应调整<br>
+        <span class="log-date">2026-08-02 // VERSION: 1.2.0</span>
+        <div class="log-content">优化了界面<br>重构代码<br>
+        修复了自定义面板的英文字体透明度不正常的问题<br>
+        修复了自定义小字颜色不正常的问题<br>
+        <del>移除了Herobrine</del></div>
+      </div>
+      <div class="log-item">
+        <span class="log-date">2026-08-01 // VERSION: 1.1.0</span>
+        <div class="log-content">现在字号和坐标会自适应调整<br>
         添加了下载SVG<br>
         添加了更新日志<br>
         增加了自定义面板<br>
@@ -371,7 +316,11 @@
         增加了网站图标<br>
         优化了启动页面<br>
         <del>基本</del>修复了图片像素改变导致文字错位的问题<br>
-        <del>移除了Herobrine</del>
+        <del>移除了Herobrine</del></div>
+      </div>
+      <div class="log-item">
+        <span class="log-date">2026-07-31 // VERSION: 1.0.0</span>
+        <div class="log-content">网站上线</div>
       </div>
     </div>
   </div>
@@ -380,12 +329,14 @@
     <div class="spectrum-bar footer-spectrum"></div>
     <div class="footer-content">
       <div class="footer-quote" id="footerQuote"></div>
-      <a class="footer-icp" href="https://icp.gov.moe/?keyword=20261325" target="_blank">萌ICP备20261325号</a>
+      <div class="footer-badges">
+        <a class="footer-icp" href="https://icp.gov.moe/?keyword=20261325" target="_blank">萌ICP备20261325号</a>
+      </div>
       <div class="footer-copyright">© 2026 Nuclear Creeper. All rights reserved.</div>
     </div>
     <div class="footer-corner"></div>
   </footer>
 
-  <script src="js/main.js" defer></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
